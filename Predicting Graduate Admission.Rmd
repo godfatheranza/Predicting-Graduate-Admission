@@ -1,0 +1,743 @@
+---
+title: "Predicting Graduate Admission"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+# Section 1 - Introduction:
+
+### Dataset for Graduate Admission 
+
+This dataset is created for prediction of Graduate Admissions from an Indian perspective. 
+
+The dataset contains several parameters which are considered important during the application for Masters Programs. The parameters included are : 
+1. GRE Scores i.e. Graduate Record Examination Scores ( out of 340 ) 
+2. TOEFL Scores i.e. Test of English as a Foreign Language ( out of 120 ) 
+3. University Rating ( out of 5 ) 
+4. SOP i.e. Statement of Purpose Strength ( out of 5 ) 
+5. LOR i.e. Letter of Recommendation Strength ( out of 5 ) 
+6. CGPA i.e. Cumulative Grade Point Average of Undergraduation (out of 10)
+7. Research Experience ( either 0 or 1 ) 
+8. Chance of Admit ( ranging from 0 to 1 )
+
+Inspiration This dataset was built with the purpose of helping students in shortlisting universities with their profiles. The predicted output gives them a fair idea about their chances for a particular university.
+
+Acknowledgements This dataset is inspired by the UCLA Graduate Dataset. The test scores and GPA are in the older format. The dataset is owned by Mohan S Acharya.
+
+Citation Please cite the following if you are interested in using the dataset : Mohan S Acharya, Asfia Armaan, Aneeta S Antony : A Comparison of Regression Models for Prediction of Graduate Admissions, IEEE International Conference on Computational Intelligence in Data Science 2019
+
+> Source Link: https://www.kaggle.com/mohansacharya/graduate-admissions#Admission_Predict_Ver1.1.csv
+
+# Section 2 - Data analysis plan:
+
+> Finding the Correlation of all the variables through Correlation Matrix I got to know that CGPA and GRE_Score has the higest Correlation with Chance_of_Admit among all other variables so we can take this both for our Hypothesis.
+
+> Hypothesis: The chance of admit increaces with the good grades that is with higher scores in CGPA (Cumulative Grade Point Average) and GRE Score (Graduate Record Examination Scores)
+
+> Hypothesis Question: Finding the prediction of Chance of Admit of a student in Graduate Admission on the bases of CGPA (Cumulative Grade Point Average) and GRE Score (Graduate Record Examination Scores).
+
+> Preforming the Univariate Analysis on CGPA and GRE_Score to check the outliners, IQR, Variance, Standard deviation, Shape of the distribution to understand the data.
+
+> Preforming the Bivariate Analysis on (CGPA vs Chance_of_Admit) and (GRE_Score vs Chance_of_Admit) to find the Correlation between the variables which we have chosen for our analysis.
+
+> Creating a Linear Modal to find the Equation of a Best Fit line to predict the Chance_of_Admit using CGPA and GRE_Score Variables, by the Linear Model we will find the Slope and Intercept of the Best Fit Line to create exact equation.
+
+> Model diagnostics to assess whether the linear model we created is reliable or not by checking linearity, nearly normal residuals and constant variability, will also help to state a correctness of our hypothisis. 
+
+
+#### Loading Packages
+
+```{r warning = FALSE, message = FALSE}
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(gridExtra)
+library(corrplot)
+library(dplyr)
+```
+
+#### To call the Graduate Admission data we used here function that is loading data
+
+```{r}
+graduate_admission <- read_csv(here("Data", "Graduate_Admission.csv"))
+```
+
+#### Glimpse Dataset
+
+```{r}
+glimpse(graduate_admission)
+```
+
+#### Checking NA values in our dataset
+
+```{r}
+table(is.na(graduate_admission)) # No NA values
+```
+-- Hence this are No NA values in our Dataset
+
+#### Finding correlation of all the variables through correlation matrix and round off value to the 2nd place.
+
+```{r}
+cor_graduate_admission <- cor(graduate_admission)
+cor_graduate_admission <- round(cor_graduate_admission, 2)
+cor_graduate_admission
+```
+
+> Finding the Correlation of all the variables through Correlation Matrix I got to know that CGPA and GRE_Score has the higest Correlation with Chance_of_Admit among all other variables so we can take this both for our Hypothesis.
+
+> Hypothesis Question: Finding the prediction of Chance of Admit of a student in Graduate Admission on the bases of CGPA (Cumulative Grade Point Average) and GRE Score (Graduate Record Examination Scores). 
+
+> So by taking Hypothesis that chance of admit increaces with the good grades that is with higher scores in CGPA (Cumulative Grade Point Average) and GRE Score (Graduate Record Examination Scores)
+
+#### Converting Research, SOP, LOR, University Rating variables as factor as they are categorical variable and removing Serial_No variable as it is of no use.
+
+```{r}
+graduate_admission.fac <- graduate_admission %>% mutate(Research = as.factor(Research), SOP = as.factor(SOP), LOR = as.factor(LOR), University_Rating = as.factor(University_Rating))
+
+graduate_admission.fac <- graduate_admission.fac %>% select(-Serial_No)
+```
+
+```{r}
+head(graduate_admission.fac)
+```
+
+##### Summary of dataset
+
+```{r}
+summary(graduate_admission.fac)
+```
+
+
+
+
+## Performing Univariate Analysis for CGPA variable
+
+#### Summary of CGPA variable
+
+```{r}
+summary(graduate_admission.fac$CGPA)
+```
+
+##### Plotting a Histogram of CGPA 
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = CGPA)) + 
+  geom_histogram(fill = 'orange', colour = 'black') +
+  ggtitle("Histogram of CGPA")
+```
+
+#### Calculating Binwitdth of CGPA
+
+```{r}
+bin_width_CGPA = (max(graduate_admission.fac$CGPA) - min(graduate_admission.fac$CGPA)) / 30
+bin_width_CGPA
+```
+
+
+##### Plotting Histogram with correct binwidth
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = CGPA))  + 
+  geom_histogram(fill = 'orange', colour = 'black', binwidth = 0.104) +
+  ggtitle("Histogram of CGPA with correct binwidth")
+```
+
+> From the above histogram we can see that there is a suspected outlier in our data for CGPA variable so to check it is really a outlier or not?
+
+```{r}
+graduate_admission.fac %>% filter(CGPA < 7.5) %>% arrange(CGPA)
+```
+
+-- So there is just one student with less then 7 CGPA but we consider as suspected outliner but we cannot consider him as outlier as there are other variables which are also affecting the Chance of Admit of a student.
+
+-- Hence no transformation is required as no outliner is present in dataset
+
+### To find the shape and skewness of the distribution in CGPA
+
+##### Plotting histogram of CGPA with Average CGPA value i.e Mean of CGPA
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = CGPA))  + 
+  geom_histogram(fill = 'orange', colour = 'black', binwidth = 0.104) + 
+  geom_vline(xintercept = mean(graduate_admission.fac$CGPA), linetype = "dashed", colour = 'red', size = 1) +
+  
+  ggtitle("Histogram of CGPA with Average CGPA value")
+```
+
+#### Plotting histogram of CGPA with Median of CGPA
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = CGPA))  + 
+  geom_histogram(fill = 'orange', colour = 'black', binwidth = 0.104) + 
+  geom_vline(xintercept = median(graduate_admission.fac$CGPA), linetype = "dashed", colour = 'blue', size = 1) + 
+  ggtitle("Histogram of CGPA with Median CGPA value")
+```
+
+#### Plotting Histogram with Comparing Average CGPA with Median CGPA value
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = CGPA))  + 
+  geom_histogram(fill = 'orange', colour = 'black', binwidth = 0.104) + 
+  geom_vline(xintercept = mean(graduate_admission.fac$CGPA), linetype = "dashed", colour = 'red', size = 1) + geom_vline(xintercept = median(graduate_admission.fac$CGPA), linetype = "dashed", colour = 'blue', size = 1) +
+  ggtitle("Comparing Average CGPA with Median CGPA value")
+```
+
+> Shape and Skewness of the distribution
+
+—- The above plot is showing that Mean value(that is average CGPA) is greater than the Median Value that we expect for the Right skewed distribution and shape is Multimodal.
+
+> Central Tendency
+
+—- The mean is greater than the median, which confirms the skewness noted in the histogram.
+
+—- It would be better to use the median as a measure of central tendency given that the distribution is skewed. We know that the median is more robust to outliers than the mean so this should give us a better sense of the centre of the data distribution.
+
+> Measure of Spread
+
+-- Finding IQR
+
+```{r}
+IQR(graduate_admission.fac$CGPA)
+```
+
+-- Finding Standerd Deviation
+
+```{r}
+sd(graduate_admission.fac$CGPA)
+```
+
+We should use the interquartile range as a measure of spread since it is a more robust measure than standard deviation in the presence of skewness/ outliers.
+
+
+### Performing Bivariate Analysis on CGPA vs Chance_of_Admit variable
+
+
+##### Visualising CGPA with Chance_of_Admit
+
+```{r}
+ggplot(graduate_admission.fac, aes(CGPA, Chance_of_Admit)) +
+  geom_point(alpha = 0.5, col='slateblue') +
+  scale_y_continuous(breaks = seq(0,1, by = 0.05)) +
+  scale_x_continuous(breaks = seq(5,10, by = 0.5)) +
+  xlab("Cumulative Grade Point Average") +
+  ylab("Probabilty of Admission") +
+  ggtitle("Relationship between Probabilty of Admission vs Cumulative Grade Point Average",
+          subtitle = "The students with higher CGPA have higher chance of Admit")
+```
+
+##### Plotting Scatter Plot of CGPA vs Chance_of_Admit with a trend line that is the best fit line for the given relationship
+
+```{r}
+ggplot(graduate_admission.fac, aes(CGPA, Chance_of_Admit)) +
+  geom_point(alpha = 0.5, col='slateblue') +
+  geom_smooth(se = FALSE, color = "red", method = "lm") +
+  scale_y_continuous(breaks = seq(0,1, by = 0.05)) +
+  scale_x_continuous(breaks = seq(5,10, by = 0.5)) +
+  xlab("Cumulative Grade Point Average") +
+  ylab("Probabilty of Admission") +
+  ggtitle("Probabilty of Admission vs Cumulative Grade Point Average",
+          subtitle = "The students with higher CGPA have higher chance of Admit shown with a trend line")
+```
+
+> The form, direction, and strength of the observed relationship that is CGPA vs Chance_of_Admit.
+
+—- It appears that Chance_of_Admit has a Positive, linear relation with the CGPA (or at least could potentially be modeled as such) and appears to be somewhat of a fairly strong relationship. As it is said that with higher scores there is a higher chance of getting a admit from good University.
+
+—- The value of the correlation coefficient is on the stronger side, confirming what we see in the plot.
+
+```{r}
+cor(graduate_admission.fac$Chance_of_Admit, graduate_admission.fac$CGPA)
+```
+
+-- We have already checked the correlation coefficient of all the variables, in the starting of our project and then selected the one which has the higest correlation coefficient which we have proved here again by performing Bivariate Analysis.
+
+-- Till now our Hypothesis is going right with the above facts.
+
+### Preforming Linear model
+
+#####  Using a scatter plot to display the relationship between Chance_of_Admit and CGPA.
+
+-- Since CGPA is the predictor variable, that is, the explanatory variable, then the
+scatter plot should have CGPA on the x axis and Chance_of_Admit (the response variable)
+on the y axis.
+
+
+```{r}
+ggplot(graduate_admission.fac, aes(CGPA, Chance_of_Admit)) +
+  geom_point()
+```
+
+--The relationship looks linear.
+
+--I would feel comfortable using a linear model to predict the number of Chance_of_Admit. It’s not a perfect relationship but it seems like it would do a pretty good job predicting Chance_of_Admit from CGPA.
+
+-- If the relationship looks linear, we can quantify the strength of the relationship with the correlation coefficient.
+
+```{r}
+cor(graduate_admission.fac$Chance_of_Admit, graduate_admission.fac$CGPA)
+```
+
+-- While there is some variation in the data, there are no unusual observations.
+
+##### Creating Linear Model for Chance_of_Admit ~ CGPA
+
+```{r}
+m1 <- lm(Chance_of_Admit ~ CGPA, data = graduate_admission.fac)
+m1
+```
+##### Summary of Linear Model m1
+
+```{r}
+summary(m1)
+```
+
+> The slope for the linear model (from least squares algotithm using the lm() function) is 0.20592.
+
+> the intercept for the linear model is -1.04434.
+
+
+> The equation for least squares regression line for Chance_of_Admit vs CGPA for the linear model:
+
+\[
+  \hat{y} = -1.04434 + 0.20592 * CGPA
+\]
+
+> Slope of 0.20592 tells us that for every "CGPA", on average, a student will have 0.20592 more "Chance_of_Admit". This would imply that a student with more CGPA is more likely to be successful scince the student would be more likly to have a Chance of Admit in a good university
+
+##### Prediction and prediction errors
+
+> If a student saw the least squares regression line and not the actual data, how student will predict the Chance of Admit for a CGPA of 8? Is this an overestimate or an underestimate, and by how much? In other words, what is the residual for this prediction?
+
+-- The student will predict -1.04434 + 0.20592*CGPA Chance_of_Admit
+
+-- To calculate a residual we use the formula: ei=yi−y^i, where  \[y_i\] is the actual value from the data and y^i is the corresponding value predicted by our linear model.
+
+> Predicted value for Chance of Admit where CGPA = 8
+
+```{r}
+pred_COA_CGPA <- -1.04434 + 0.20592*8
+pred_COA_CGPA
+```
+
+> To Calculate the actual Chance of Admit we will filter students with CGPA = 8  
+
+```{r}
+CGPA_8 <- graduate_admission.fac %>% filter(CGPA == 8)
+CGPA_8
+```
+
+> As there are many different Chance of Admit of students with CGPA = 8 as other factors are changing the Chance of Admit of a student so we will not consider that for now and will just take average of all of them and then will compare
+
+```{r}
+actual_COA_CGPA <-mean(CGPA_8$Chance_of_Admit)
+actual_COA_CGPA
+```
+
+
+```{r}
+ei_CGPA = actual_COA_CGPA - pred_COA_CGPA
+ei_CGPA
+```
+
+> Since the residual for this point is positive, that means the value predicted by our model is an underestimate
+
+
+### Model diagnostics
+
+> Since the equation for our model is predicted: Chance_of_Admit^ = -1.04434 + 0.20592*CGPA, we can use this in a mutate statement to calculated our predicted values
+
+> Once we have our predicted values we can calculate the residuals as residuals = actual values − predicted values
+
+```{r}
+ga_test_CGPA <- graduate_admission.fac %>% mutate(pred_Chance_of_Admit_CGPA = -1.04434 + 0.20592 * CGPA,
+                                             residuals_CGPA = Chance_of_Admit - pred_Chance_of_Admit_CGPA)
+                  
+ga_test_CGPA <- ga_test_CGPA %>% select(Chance_of_Admit, pred_Chance_of_Admit_CGPA, CGPA, residuals_CGPA)
+ga_test_CGPA
+```
+
+##### Plotting CGPA vs residuals_CGPA 
+```{r}
+ggplot(ga_test_CGPA, aes(x = CGPA, y = residuals_CGPA)) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+```
+
+
+> There is no apparent pattern in the residual plot above. This means that a linear model is appropriate to describe the relationship between Chance_of_Admit and CGPA, that is, the condition of “linearity” has been met.
+
+
+> Nearly normal residuals: To check this condition, we can look at a histogram.
+
+##### Plotting histogram of residuals_CGPA
+```{r}
+ggplot(ga_test_CGPA, aes(x = residuals_CGPA)) +
+   geom_histogram(fill = 'purple', colour = 'black') + 
+   ggtitle("Histogram for residuals_CGPA")
+```
+
+##### Finding correct binwidth
+```{r}
+xx <- (max(ga_test_CGPA$residuals_CGPA) - min(ga_test_CGPA$residuals_CGPA))/30
+xx
+```
+
+##### Plotting Histogram for residuals_CGPA with correct binwidth
+
+```{r}
+ggplot(ga_test_CGPA, aes(x = residuals_CGPA)) +
+   geom_histogram(fill = 'purple', colour = 'black', binwidth = 0.0151184) +
+  ggtitle("Histogram for residuals_CGPA with correct binwidth")
+```
+
+> Based on the histogram above, the residuals appear to be nearly normal so this condition is met.
+
+
+##### To check Constant variability: I will redraw the plot in The Scatter plot of Residuals vs CGPA with some extra horizontal lines:
+
+```{r}
+ggplot(ga_test_CGPA, aes(x = CGPA, y = residuals_CGPA)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_hline(yintercept = 0.2, color = 'blue') +
+  geom_hline(yintercept = -0.2, color = 'blue')
+  
+```
+
+> Since all the residuals are basically contained within the two horizontal blue lines and do not seem to be getting closer to 0 or farther away as CGPA increase, or have any obvious pattern that changes the variability as we increase CGPA, it seems like the condition of constant variability has also been met.
+
+--So by our Hypothisis that with greater CGPA there is greater Chance of Admit in the Good University is correct by the equataion on best fit line Chance_of_Admit = -1.04434 + 0.20592 * CGPA. Hence if a student has higher CGPA his/ her chance of getting admit into a good university increases.
+
+
+
+
+
+## Performing Univariate Analysis for GRE_Score variable
+
+#### Summary of GRE_Score variable
+
+```{r}
+summary(graduate_admission.fac$GRE_Score)
+```
+
+##### Plotting a Histogram of GRE_Score
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score)) + 
+  geom_histogram(fill = 'yellow', colour = 'black') +
+  ggtitle("Histogram of GRE Score")
+```
+
+##### Calculating Binwitdth of GRE_Score
+
+```{r}
+bin_width_GRE_Score = (max(graduate_admission.fac$GRE_Score) - min(graduate_admission.fac$GRE_Score)) / 30
+bin_width_GRE_Score
+```
+
+
+##### Plotting Histogram with correct binwidth
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score))  + 
+  geom_histogram(fill = 'yellow', colour = 'black', binwidth = 1.666667) +
+  ggtitle("Histogram of GRE Score with correct binwidth")
+```
+
+> From the above histogram we can see that there is a suspected outlier in our data for GRE_Score variable so to check it is really a outlier or not?
+
+```{r}
+graduate_admission.fac %>% filter(GRE_Score < 295) %>% arrange(GRE_Score)
+```
+
+-- The students with score less then 293 are suspected as outliner.
+-- But if we see that all though they have less GRE_Score but we know that there are other variables which are going to affect the Chance of Admit of a Student so we cannot take these students with 290 GRE Score as outliners.
+
+-- Hence no transformation is required as no outliner is present in dataset.
+
+### To find the shape and skewness of the distribution in CGPA.
+
+##### Plotting histogram with Average of GRE_Score i.e Mean GRE_Score
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score))  + 
+  geom_histogram(fill = 'yellow', colour = 'black', binwidth = 1.666667) +
+  geom_vline(xintercept = mean(graduate_admission.fac$GRE_Score), linetype = "dashed", colour = 'red', size = 1) +
+  ggtitle("Histogram with Average of GRE_Score")
+```
+
+##### Plotting histogram with Median of GRE_Score
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score))  + 
+  geom_histogram(fill = 'yellow', colour = 'black', binwidth = 1.666667) +
+  geom_vline(xintercept = mean(graduate_admission.fac$GRE_Score), linetype = "dashed", colour = 'red', size = 1) +
+  ggtitle("Histogram with Median of GRE_Score")
+```
+
+##### Plotting Histogram with Comparing Average GRE_Score with Median GRE_Score value
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score))  + 
+  geom_histogram(fill = 'yellow', colour = 'black', binwidth = 1.666667) + 
+  geom_vline(xintercept = mean(graduate_admission.fac$GRE_Score), linetype = "dashed", colour = 'red', size = 1) + geom_vline(xintercept = median(graduate_admission.fac$GRE_Score), linetype = "dashed", colour = 'blue', size = 1) +
+  ggtitle("Comparing Average GRE_Score with Median GRE_Score value")
+```
+
+> Shape and Skewness of the distribution
+
+—- The above plot is showing that Mean value(that is average GRE_Score) is smaller than the Median Value that we expect for the Left skewed distribution and shape is Multimodal.
+
+> Central Tendency
+
+—- The mean is greater than the median, which confirms the skewness noted in the histogram.
+
+—- It would be better to use the median as a measure of central tendency given that the distribution is skewed. We know that the median is more robust to outliers than the mean so this should give us a better sense of the centre of the data distribution.
+
+> Measure of Spread
+
+-- Finding IQR
+```{r}
+IQR(graduate_admission.fac$GRE_Score)
+```
+
+-- Finding Standerd Deviation
+```{r}
+sd(graduate_admission.fac$GRE_Score)
+```
+
+We should use the interquartile range as a measure of spread since it is a more robust measure than standard deviation in the presence of skewness/ outliers.
+
+
+
+##### Visualising GRE_Score with Chance_of_Admit
+
+```{r}
+ggplot(graduate_admission.fac, aes(x = GRE_Score, y = Chance_of_Admit)) +
+  geom_point(alpha = 0.5, col='slateblue') +
+  scale_y_continuous(breaks = seq(0,1, by = 0.05)) +
+  xlab("Graduate Record Examination Scores") +
+  ylab("Probabilty of Admission") +
+  ggtitle("Relationship between Probabilty of Admission vs Graduate Record Examination Scores",
+          subtitle = "The students with higher GRE_Score have higher chance of Admit")
+```
+
+
+##### Plotting Scatter Plot of GRE_Score vs Chance_of_Admit with a trend line that is the best fit line for the given relationship
+
+```{r}
+ggplot(graduate_admission.fac, aes(GRE_Score, Chance_of_Admit)) +
+  geom_point(alpha = 0.5, col='slateblue') +
+  geom_smooth(se = FALSE, color = "red", method = "lm") +
+  scale_y_continuous(breaks = seq(0,1, by = 0.05)) +
+  scale_x_continuous(breaks = seq(5,10, by = 0.5)) +
+  xlab("Cumulative Grade Point Average") +
+  ylab("Probabilty of Admission") +
+  ggtitle("Probabilty of Admission vs Cumulative Grade Point Average",
+          subtitle = "The students with higher GRE_Score have higher chance of Admit shown with a trend line")
+```
+
+> The form, direction, and strength of the observed relationship that is GRE_Score vs Chance_of_Admit.
+
+—- It appears that Chance_of_Admit has a Positive, linear relation with the GRE_Score (or at least could potentially be modeled as such) and appears to be somewhat of a fairly strong relationship. As it is said that with higher scores there is a higher chance of getting a admit from good University.
+
+—- The value of the correlation coefficient is on the stronger side, confirming what we see in the plot.
+
+```{r}
+cor(graduate_admission.fac$Chance_of_Admit, graduate_admission.fac$GRE_Score)
+```
+
+-- We have already checked the correlation coefficient of all the variables, in the starting of our project and then selected the one which has the higest correlation coefficient which we have proved here again by performing Bivariate Analysis.
+
+-- Till now our Hypothesis is going right with the above facts.
+
+### Preforming Linear model
+
+#####  Using a scatter plot to display the relationship between Chance_of_Admit and GRE_Score.
+
+-- Since GRE_Score is the predictor variable, that is, the explanatory variable, then the
+scatter plot should have CGPA on the x axis and Chance_of_Admit (the response variable)
+on the y axis.
+
+
+```{r}
+ggplot(graduate_admission.fac, aes(GRE_Score, Chance_of_Admit)) +
+  geom_point()
+```
+
+--The relationship looks linear.
+
+--I would feel comfortable using a linear model to predict the number of Chance_of_Admit. It’s not a perfect relationship but it seems like it would do a pretty good job predicting Chance_of_Admit from GRE_Score.
+
+-- If the relationship looks linear, we can quantify the strength of the relationship with the correlation coefficient.
+
+```{r}
+cor(graduate_admission.fac$Chance_of_Admit, graduate_admission.fac$GRE_Score)
+```
+
+-- While there is some variation in the data, there are no unusual observations.
+
+
+##### Creating Linear Model for Chance_of_Admit ~ GRE_Score
+
+```{r}
+m2 <- lm(Chance_of_Admit ~ GRE_Score, data = graduate_admission.fac)
+```
+
+##### Summary of Linear Model m2
+
+```{r}
+summary(m2)
+```
+
+> The slope for the linear model (from least squares algotithm using the lm() function) is 0.0101259
+> the intercept for the linear model is -2.4828147
+
+> The least squares regression line for Chance_of_Admit vs GRE_Score for the linear model:
+
+\[
+  \hat{y} = -2.4828147 + 0.0101259 * GREScore
+\]
+
+> Slope of 0.0101259 tells us that for every "GRE_Score", on average, a student will have 0.0101259 more "Chance_of_Admit". This would imply that a student with more GRE Score is more likely to be successful scince the student would be more likly to have a Chance of Admit in a good university
+
+##### Prediction and prediction errors
+
+> If a student saw the least squares regression line and not the actual data, how student will predict the Chance of Admit for a GRE Score of 320? Is this an overestimate or an underestimate, and by how much? In other words, what is the residual for this prediction?
+
+-- The student will predict -2.4828147 + 0.0101259*GREScore Chance_of_Admit
+
+-- To calculate a residual we use the formula: ei=yi−y^i, where  \[y_i\] is the actual value from the data and y^i is the corresponding value predicted by our linear model.
+
+> Predicted value for Chance of Admit where GRE_Score = 320
+
+```{r}
+pred_COA_GREScore <- -2.4828147 + 0.0101259*320
+pred_COA_GREScore
+```
+
+> To Calculate the actual Chance of Admit we will filter students with GRE_Score = 320
+
+```{r}
+GREScore_320 <- graduate_admission.fac %>% filter(GRE_Score == 320)
+GREScore_320
+```
+
+> As there are many different Chance of Admit of students with GRE_Score = 320 as other factors are changing the Chance of Admit of a student so we will not consider that for now and will just take average of all of them and then will compare
+
+```{r}
+actual_COA_GREScore <-mean(GREScore_320$Chance_of_Admit)
+actual_COA_GREScore
+```
+
+
+```{r}
+ei_GRE_Score = actual_COA_GREScore - pred_COA_GREScore
+ei_GRE_Score
+```
+
+> Since the residual for this point is positive, that means the value predicted by our model is an underestimate
+
+
+### Model diagnostics
+
+> Since the equation for our model is predicted: GRE_Score^ = -2.4828147 + 0.0101259 * CGPA, we can use this in a mutate statement to calculated our predicted values
+
+> Once we have our predicted values we can calculate the residuals as residuals = actual values − predicted values
+
+```{r}
+ga_test_GRE <- graduate_admission.fac %>% mutate(pred_Chance_of_Admit_GRE = -2.4828147 + 0.0101259 *GRE_Score,
+                                             residuals_GRE = Chance_of_Admit - pred_Chance_of_Admit_GRE)
+
+ga_test_GRE <- ga_test_GRE %>% select(Chance_of_Admit, pred_Chance_of_Admit_GRE, GRE_Score, residuals_GRE)
+ga_test_GRE                 
+```
+
+##### Plotting GRE_Score vs residuals_GRE
+```{r}
+ggplot(ga_test_GRE, aes(x = GRE_Score, y = residuals_GRE)) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+```
+
+
+> There is no apparent pattern in the residual plot above. This means that a linear model is appropriate to describe the relationship between Chance_of_Admit and GRE_Score, that is, the condition of “linearity” has been met.
+
+
+> Nearly normal residuals: To check this condition, we can look at a histogram.
+
+##### Plotting histogram of residuals_GRE
+```{r}
+ggplot(ga_test_GRE, aes(x = residuals_GRE)) +
+   geom_histogram(fill = 'purple', colour = 'black') + 
+   ggtitle("Histogram for residuals_GRE")
+```
+
+##### Finding correct binwidth
+
+```{r}
+xx <- (max(ga_test_GRE$residuals_GRE) - min(ga_test_GRE$residuals_GRE))/30
+xx
+```
+
+##### Plotting Histogram for residuals_GRE with correct binwidth
+
+```{r}
+ggplot(ga_test_GRE, aes(x = residuals_GRE)) +
+   geom_histogram(fill = 'purple', colour = 'black', binwidth = 0.01745084) +
+  ggtitle("Histogram for residuals_GRE with correct binwidth")
+```
+
+
+
+> Based on the histogram above, the residuals appear to be nearly normal so this condition is met.
+
+
+##### To check Constant variability: I will redraw the plot in The Scatter plot of residuals_GRE vs GRE_Score with some extra horizontal lines:
+
+```{r}
+ggplot(ga_test_GRE, aes(x = GRE_Score, y = residuals_GRE)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_hline(yintercept = 0.2, color = 'blue') +
+  geom_hline(yintercept = -0.2, color = 'blue')
+  
+```
+
+> Since all the residuals are basically contained within the two horizontal blue lines and do not seem to be getting closer to 0 or farther away as GRE_Score increase, or have any obvious pattern that changes the variability as we increase GRE_Score, it seems like the condition of constant variability has also been met.
+
+-- So by our Hypothesis that with greater CGPA there is greater Chance of Admit in the Good University is correct by the equataion on best fit line Chance_of_Admit = -2.4828147 + 0.0101259 *GRE_Score. Hence if a student has higher CGPA his/ her chance of getting admit into a good university increases.
+
+
+# Section 3 - Final analysis report and conclusion:
+
+* My Final analysis on the Graduate Admission Dataset says that the chance of getting admit from a good university increases as the CGPA and GRE Score of a student goes higher. 
+* My hypothesis also states the same as my analysis report says. There are few other factors that affect the admit of the student like University Ranking, Research Papers Published, SOP, LOR, TOEFL scores as well as going to affect the chances of admit of student in university. 
+* My analysis says that 0.0101259 times the GRE Score and 0.20592 times of CGPA will give the chances of admit of a student in University. 
+* This data distribution is normal, positive  and linear for both the Variables and does not have any outlier in it. 
+* We have checked the Univariate Analysis for GRE_Score and CGPA score which defines the Skewness, distribution of the data. 
+* We have also performed the bivariate analysis for both the variables which helps us to comment on the correlation of the CGPA and GRE_Score with Chance_of_Admit variable. I have checked the correlation of all the variables in the starting only by correlation matrix to find the best 2 variables on which I can perform a best analysis and create a good model for prediction. 
+* I applied Linear Model to find the best line equation through which I can predict the Chance of Admit of a student on the basis of his/her GRE Scores and CGPA. 
+* I have also applied Prediction and prediction errors method to check the error in the pridiction and also found that there is an overestimate for few values and underestimate for few values as the residual column says that few values are positive  and few are negative. Again this is going to happen because of the other variables affecting the actual results altogether. 
+* I have also applied the Model diagnostics to diagnose my model and to check whether linear model is correct or not. In Model diagnostics I checked linearity, nearly normal residuals and constant variability of the model and my model fits in each of them. Since all three conditions have been met, we can reliably use the model l1 and l2 to describe the relationship between CGPA and Chance_of_Admit, GRE_Score and Chance_of_Admit as a way to predict Chance_of_Admit for a Student.
+
+### Conclusion
+I would like to conclude by saying that my hypothesis is correct and I have proven my hypothesis of saying that Chance of Admit increases with the GRE Score and CGPA. 0.0101259 times of the GRE Score and 0.20592 times of CGPA will give the chances of admit of a student in University. 
+Once can find it by the best fit line equation that is:
+By GRE_Score:
+\[
+  \hat{y} = -2.4828147 + 0.0101259 * GREScore
+\]
+
+By CGPA:
+\[
+  \hat{y} = -1.04434 + 0.20592 * CGPA
+\]
+
+There are few things through which out prediction could get better that is using more then one variable to predict the Chance of Admit, I think that prediction can be done better by performing other models. Maybe taking 2 or 3 variables on one time to predict the Chance of Admit.
+
+
+
+
+References : http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software (for corelation matrix)
